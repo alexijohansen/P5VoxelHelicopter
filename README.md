@@ -1,71 +1,52 @@
-# Voxel Helicopter Simulator (Comanche p5.js)
+# A vibe coded Voxel Helicopter Simulator using P5.js
 
-A high-performance Voxel Space rendering engine built with p5.js, inspired by the classic 1992 simulator *Comanche*. This project recreates the iconic "ray-cast" landscape aesthetic using modern web technologies.
+A high-performance, retro-style voxel landscape flight simulator modeled after the classic *Comanche* engine.
 
-## 🚀 How to Run
+## How to Run
 
-There are two ways to run this project depending on your environment:
+1.  Open **`index.html`** in any modern web browser (Safari, Chrome, Firefox).
+2.  **No local server is required.** You can simply double-click the file to run it.
 
-### Method 1: Standalone (Recommended for Mac)
-Just double-click **`index.html`** or right-click it and select **Open with Safari**.
-- **No server required.**
-- This version uses `standalone_sketch.js`, which has the map images embedded directly in the code to bypass browser security restrictions (CORS).
+## The "Standalone" Method (CORS Bypass)
 
-### Method 2: Local Server (For Development)
-If you want to use the standard file-loading method:
-1. Double-click the **`launch_simulator.command`** file.
-2. It will automatically start a Python server and open Safari to `http://127.0.0.1:8888`.
+In modern browsers, "local file" security (CORS) normally prevents JavaScript from loading images directly from your folders unless you are running a local web server (like the Python server we used previously).
 
----
+To bypass this restriction, this project uses a **bundled approach** in `main.js`:
+- The map images (`C1W.png` and `D1.png`) are converted into **Base64** text strings.
+- These strings are embedded directly inside `main.js`.
+- This means the code has everything it needs to run inside a single script. No external file fetching is required, so the security check is never triggered.
 
-## 🎮 Controls
+## Flight Deck Tuning
 
-| Key | Action |
-| --- | --- |
-| **W / Up Arrow** | Accelerate Forward (Nose tilts down) |
-| **S / Down Arrow** | Accelerate Backward (Nose tilts up) |
-| **A / Left Arrow** | Turn Left (Helicopter banks left) |
-| **D / Right Arrow** | Turn Right (Helicopter banks right) |
-| **Space** | Increase Altitude |
-| **Shift** | Decrease Altitude |
+Click the **Gear Icon** ⚙️ in the top-right corner to open the tuning menu:
+- **Turn Sensitivity**: Adjusts how quickly you rotate.
+- **Banking (Roll)**: Sets the intensity of the sideways tilt during turns.
+- **Tilt (Pitch)**: Sets how much the nose dives/pulls up during movement.
+- **Acceleration**: Sets the engine power.
 
----
+**Persistence**: Your settings are saved to your browser's `localStorage` and will be remembered every time you return.
 
-## 🛠 Features
+## Controls & Physics
 
-- **Voxel Space Engine**: A front-to-back raycasting algorithm optimized for 60fps performance.
-- **Variable Level of Detail (LOD)**: Step sizes increase with distance to maintain high framerates while allowing large view distances.
-- **Helicopter Physics**: Implements inertia and damping for a smooth "floating" feel. The world banks and tilts dynamically based on your movement.
-- **Retro Aesthetic**: Renders at an internal resolution of 400x240 and scales up with pixelated interpolation for an authentic 90s feel.
-- **Optimized Sampling**: Map data is converted into typed arrays (`Uint32Array` for colors, `Uint8Array` for height) for direct memory access during the render loop.
+-   **W / Up Arrow**: Accelerate Forward (Nose tilts Down)
+-   **S / Down Arrow**: Brake / Backward (Nose tilts Up)
+-   **A / Left Arrow**: Turn Left (Bank Left)
+-   **D / Right Arrow**: Turn Right (Bank Right)
+-   **Space**: Increase Altitude
+-   **Shift**: Decrease Altitude
 
----
+### High-Fidelity Physics
+The simulator uses **Frame-Rate Independent Physics** via `deltaTime`. This ensures that the helicopter handles exactly the same regardless of whether your computer is running at 30fps or 144fps. It also prevents the "key-repeat" issues common in simple JS games.
 
-## 📁 File Structure
+## Project Files
 
-- **`index.html`**: The UI and entry point for the browser.
-- **`sketch.js`**: The main game engine. Bundles the Camera, Map, and Renderer logic.
-- **`standalone_sketch.js`**: A specialized version of the engine that contains the map images as Base64 data strings.
-- **`launch_simulator.command`**: A macOS shell script to launch the local development environment.
-- **`maps/`**: Directory containing the original game maps (Color and Depth/Height pairs).
-- **`p5.min.js`**: The p5.js drawing library.
+-   **`index.html`**: The UI, Glassmorphism HUD, and entry point.
+-   **`main.js`**: The consolidated engine, time-based physics, and embedded map data.
+-   **`p5.min.js`**: The p5.js library.
+-   **`maps/`**: Original game assets (for reference).
 
----
+## Technical Details
 
-## 🖼 Image Loading Methods
-
-### 1. Base64 (Standalone)
-In the standalone version, the map images are converted into **Base64 Data URLs**. This means the image data is stored as a long string of text inside the JavaScript file itself. 
-- **Advantage**: Bypasses browser CORS security. You can open the file locally without a server.
-- **Disadvantage**: Makes the script file much larger (~1.5MB).
-
-### 2. Standard Fetch (Legacy)
-The engine originally used the standard `loadImage()` function to fetch PNGs from the `/maps` folder.
-- **Advantage**: Cleaner code, smaller script files.
-- **Disadvantage**: Modern browsers (Safari, Chrome) block this for security unless you are running a local web server (Method 2).
-
----
-
-## 📚 Credits
-- Based on the "Voxel Space" algorithm popularized by Sebastian Macke.
-- Original map assets from *Comanche: Maximum Overkill*.
+-   **Engine**: Front-to-back raycasting (Voxel Space algorithm).
+-   **Smoothing**: Uses Linear Interpolation (`lerp`) for organic, flowing movement.
+-   **Rendering**: Optimized with typed arrays and a low-resolution offscreen buffer for an authentic retro feel.
