@@ -6,12 +6,12 @@
 // --- CONFIG & PERSISTENCE ---
 
 const DEFAULT_CONFIG = {
-  turnSpeed: 0.0015,
-  rollIntensity: 3.5,
-  pitchIntensity: 4.5,
-  accel: 0.03,
-  mapScale: 120,
-  startHeight: 120
+  turnSpeed: 0.001,
+  rollIntensity: 3,
+  pitchIntensity: 8,
+  accel: 0.75,
+  mapScale: 100,
+  startHeight: 100
 };
 
 let config = { ...DEFAULT_CONFIG };
