@@ -1,25 +1,48 @@
 <!DOCTYPE html>
-<html lang="">
+<html lang="en">
 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>p5.js example</title>
+  <title>Voxel Helicopter Simulator (Standalone)</title>
   <style>
     body {
       padding: 0;
       margin: 0;
-      background-color: #1b1b1b;
+      background-color: #050505;
+      color: #00ff41;
+      font-family: 'Courier New', Courier, monospace;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      pointer-events: none;
+      text-shadow: 2px 2px 2px rgba(0,0,0,0.8);
+      z-index: 10;
+    }
+    canvas {
+      box-shadow: 0 0 50px rgba(0,0,0,0.5);
+      image-rendering: pixelated;
     }
   </style>
-  <script src="../p5.min.js"></script>
-  <!-- <script src="../addons/p5.sound.js"></script> -->
-  <script src="sketch.js"></script>
+  <script src="p5.min.js"></script>
+  <script src="standalone_sketch.js"></script>
 </head>
 
 <body>
-  <main>
-  </main>
+  <div id="ui">
+    <div style="font-weight: bold; font-size: 1.2em;">VOXEL ENGINE STANDALONE</div>
+    <div id="status">STATUS: INITIALIZING...</div>
+    <div id="fps">FPS: --</div>
+    <div id="pos">POS: --</div>
+  </div>
+  <main></main>
 </body>
 
 </html>
