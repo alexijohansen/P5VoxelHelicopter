@@ -372,6 +372,9 @@ function updateConfigFromSliders() {
   config.mapScale = parseFloat(document.getElementById('s-map').value);
   config.startHeight = parseFloat(document.getElementById('s-start-h').value);
   
+  // Real-time updates
+  camera.height = config.startHeight;
+  
   // Update view labels
   document.getElementById('v-turn').innerText = config.turnSpeed;
   document.getElementById('v-roll').innerText = config.rollIntensity;
