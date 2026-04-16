@@ -274,10 +274,11 @@ class Renderer {
          * 1. (CameraHeight - GroundHeight): Gets the relative altitude.
          * 2. / z: "Perspective Division".
          * 3. * vScale: Dynamic factor that keeps mountains looking correct regardless of screen height.
-         *    We also apply the fovMultiplier here for a universal zoom effect.
+         *    We divide by fovMultiplier here because a wider Field of View (Zoom Out) 
+         *    should make objects appear vertically smaller on screen.
          * 4. + horizon: Shifts the whole world up/down (Pitching).
          */
-        const vScale = this.height * (config.mapScale / 240) * config.fovMultiplier;
+        const vScale = (this.height * (config.mapScale / 240)) / config.fovMultiplier;
         let screenY = ((camera.height - heightSample) / z * vScale + horizon) | 0;
         
         // Clamp to screen bounds
