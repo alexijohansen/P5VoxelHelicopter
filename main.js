@@ -4,6 +4,7 @@
  */
 
 // --- CONFIG & PERSISTENCE ---
+const RESOLUTION_SCALE = 4; // Scale factor for retro feel (1 = native resolution)
 
 const DEFAULT_CONFIG = {
   turnSpeed: 0.001,
@@ -11,7 +12,8 @@ const DEFAULT_CONFIG = {
   pitchIntensity: 8,
   accel: 0.75,
   mapScale: 100,
-  startHeight: 100
+  startHeight: 100,
+  fovMultiplier: 1.0
 };
 
 let config = { ...DEFAULT_CONFIG };
@@ -115,8 +117,7 @@ class Camera {
     
     // Orientation
     this.angle = 0;    // Yaw: Which way are we facing? (in Radians)
-    this.horizon = 120;// Pitch: The vertical center of the view. 
-                       // Moving this simulates the helicopter nose tilting up or down.
+    this.horizon = renderer ? renderer.height / 2 : 120; // Dynamic center
     this.roll = 0;     // Banking: The sideways tilt when turning.
 
     // Physics Engine (Velocity & Inertia)
@@ -129,9 +130,7 @@ class Camera {
     this.friction = 0.94;
 
     // Smoothing Targets
-    // We don't want the camera to "snap" to a tilt. We set a "target" and 
-    // use math to smoothly slide toward it (Interpolation).
-    this.targetHorizon = 120;
+    this.targetHorizon = renderer ? renderer.height / 2 : 120;
     this.targetRoll = 0;
   }
 
@@ -163,8 +162,7 @@ class Camera {
     this.roll = lerp(this.roll, this.targetRoll, 0.1);
     
     // 5. Reset Targets: 
-    // Every frame we want to "level out" unless the player is holding a key.
-    this.targetHorizon = 120;
+    this.targetHorizon = renderer.height / 2;
     this.targetRoll = 0;
   }
 
@@ -185,7 +183,9 @@ class Camera {
 
     // Pitching: If we are moving forward/backward, we change the target horizon.
     // "Looking down" at the ground while speeding forward makes it feel like the nose is diving.
-    this.targetHorizon = 120 - (amount * pitchStr);
+    // We scale the pitch by the window height so it feels the same on any screen size.
+    const windowScale = renderer.height / 240;
+    this.targetHorizon = (renderer.height / 2) - (amount * pitchStr * windowScale);
   }
 
   /**
@@ -214,13 +214,17 @@ class Camera {
 }
 
 class Renderer {
-  constructor(sw, sh) {
-    this.width = sw;
-    this.height = sh;
-    this.buffer = createGraphics(this.width, this.height);
-    this.buffer.pixelDensity(1);
+  constructor() {
     this.viewDistance = 600;
     this.scaleHeight = 120;
+    this.resize();
+  }
+
+  resize() {
+    this.width = Math.floor(windowWidth / RESOLUTION_SCALE);
+    this.height = Math.floor(windowHeight / RESOLUTION_SCALE);
+    this.buffer = createGraphics(this.width, this.height);
+    this.buffer.pixelDensity(1);
   }
 
   render(camera, map) {
@@ -237,13 +241,16 @@ class Renderer {
     const cosP = Math.cos(camera.angle);
     const sinP = Math.sin(camera.angle);
     
+    // Calculate FoV factor based on aspect ratio AND user config
+    const fovH = (this.width / this.height) * 0.6 * config.fovMultiplier; 
+    
     let dz = 1.0;
     for (let z = 1; z < this.viewDistance; z += dz) {
       dz += 0.005;
-      const pLeftX = (cosP + sinP) * z;
-      const pLeftY = (sinP - cosP) * z;
-      const pRightX = (cosP - sinP) * z;
-      const pRightY = (sinP + cosP) * z;
+      const pLeftX = (cosP + sinP * fovH) * z;
+      const pLeftY = (sinP - cosP * fovH) * z;
+      const pRightX = (cosP - sinP * fovH) * z;
+      const pRightY = (sinP + cosP * fovH) * z;
       const dx = (pRightX - pLeftX) / this.width;
       const dy = (pRightY - pLeftY) / this.width;
       
@@ -265,11 +272,13 @@ class Renderer {
          * screenY = (CameraHeight - GroundHeight) / Distance * Scale + ScreenVerticalCenter
          * 
          * 1. (CameraHeight - GroundHeight): Gets the relative altitude.
-         * 2. / z: "Perspective Division". Objects further away (larger z) become smaller/center-focused.
-         * 3. * this.scaleHeight: A constant that makes the mountains look tall or flat.
+         * 2. / z: "Perspective Division".
+         * 3. * vScale: Dynamic factor that keeps mountains looking correct regardless of screen height.
+         *    We also apply the fovMultiplier here for a universal zoom effect.
          * 4. + horizon: Shifts the whole world up/down (Pitching).
          */
-        let screenY = ((camera.height - heightSample) / z * config.mapScale + horizon) | 0;
+        const vScale = this.height * (config.mapScale / 240) * config.fovMultiplier;
+        let screenY = ((camera.height - heightSample) / z * vScale + horizon) | 0;
         
         // Clamp to screen bounds
         if (screenY < 0) screenY = 0;
@@ -296,6 +305,7 @@ class Renderer {
   }
 
   display() {
+    // Fill the whole canvas (aspect ratio now matches perfectly)
     image(this.buffer, 0, 0, width, height);
   }
 }
@@ -319,7 +329,7 @@ function setup() {
   voxelMap = new VoxelMap();
   voxelMap.init(imgColor, imgDepth);
   camera = new Camera();
-  renderer = new Renderer(400, 240);
+  renderer = new Renderer();
   noSmooth();
   document.getElementById('status').innerText = "STATUS: RUNNING";
 }
@@ -344,18 +354,23 @@ function draw() {
 }
 
 function handleInput() {
-  if (keyIsDown(87) || keyIsDown(UP_ARROW)) camera.moveForward(1);
-  else if (keyIsDown(83) || keyIsDown(DOWN_ARROW)) camera.moveForward(-1);
-  if (keyIsDown(65) || keyIsDown(LEFT_ARROW)) camera.turn(-1);
-  else if (keyIsDown(68) || keyIsDown(RIGHT_ARROW)) camera.turn(1);
-  if (keyIsDown(32)) camera.changeHeight(1);
-  else if (keyIsDown(16)) camera.changeHeight(-1);
+  if (isConfigOpen) return;
+  
+  // Directional movement exclusively on Arrow Keys
+  if (keyIsDown(UP_ARROW)) camera.moveForward(1);
+  else if (keyIsDown(DOWN_ARROW)) camera.moveForward(-1);
+  if (keyIsDown(LEFT_ARROW)) camera.turn(-1);
+  else if (keyIsDown(RIGHT_ARROW)) camera.turn(1);
+  
+  // Altitude control exclusively on W and S
+  if (keyIsDown(87)) camera.changeHeight(1); // W: Ascend
+  else if (keyIsDown(83)) camera.changeHeight(-1); // S: Descend
 }
 
 // --- UI HELPERS ---
 
 function setupUIListeners() {
-  const sliders = ['turn', 'roll', 'pitch', 'accel', 'map', 'start-h'];
+  const sliders = ['turn', 'roll', 'pitch', 'accel', 'map', 'start-h', 'fov'];
   sliders.forEach(id => {
     const el = document.getElementById('s-' + id);
     if (el) {
@@ -371,6 +386,7 @@ function updateConfigFromSliders() {
   config.accel = parseFloat(document.getElementById('s-accel').value);
   config.mapScale = parseFloat(document.getElementById('s-map').value);
   config.startHeight = parseFloat(document.getElementById('s-start-h').value);
+  config.fovMultiplier = parseFloat(document.getElementById('s-fov').value);
   
   // Real-time updates
   camera.height = config.startHeight;
@@ -382,6 +398,7 @@ function updateConfigFromSliders() {
   document.getElementById('v-accel').innerText = config.accel;
   document.getElementById('v-map').innerText = config.mapScale;
   document.getElementById('v-start-h').innerText = config.startHeight;
+  document.getElementById('v-fov').innerText = config.fovMultiplier;
 }
 
 function syncSlidersWithConfig() {
@@ -391,6 +408,7 @@ function syncSlidersWithConfig() {
   document.getElementById('s-accel').value = config.accel;
   document.getElementById('s-map').value = config.mapScale;
   document.getElementById('s-start-h').value = config.startHeight;
+  document.getElementById('s-fov').value = config.fovMultiplier;
   
   document.getElementById('v-turn').innerText = config.turnSpeed;
   document.getElementById('v-roll').innerText = config.rollIntensity;
@@ -398,6 +416,7 @@ function syncSlidersWithConfig() {
   document.getElementById('v-accel').innerText = config.accel;
   document.getElementById('v-map').innerText = config.mapScale;
   document.getElementById('v-start-h').innerText = config.startHeight;
+  document.getElementById('v-fov').innerText = config.fovMultiplier;
 }
 
 function updateHUD() {
@@ -409,4 +428,8 @@ function updateHUD() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  renderer.resize();
+  // Keep camera horizon synced
+  camera.horizon = renderer.height / 2;
+  camera.targetHorizon = renderer.height / 2;
 }
